@@ -6,7 +6,10 @@ Data, R scripts and other files from the paper “Amorim et al., 2020”
 # System info
 
     macOS Catalina - Version 10.15.1 (19B88)
-    MacBook Pro (13-inch, 2017, Two Thunderbolt 3 ports)
+    
+    MacBook Pro 2017
+    Processor: 2,3 GHz Dual-Core Intel Core i5
+    Memory: 8 GB 2133 MHz LPDDR3
 
 # R and packages versions used
 
