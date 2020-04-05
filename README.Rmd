@@ -1,0 +1,28 @@
+---
+output: github_document
+---
+
+# amorim_etal_2020
+Data, R scripts and other files from the paper "Amorim et al., 2020"
+
+# System info
+
+```
+macOS Catalina - Version 10.15.1 (19B88)
+MacBook Pro (13-inch, 2017, Two Thunderbolt 3 ports)
+```
+
+# R and packages versions used
+
+```{r, include=FALSE}
+library(tidyverse)
+library(mgcv)
+library(caret)
+library(recipes)
+library(patchwork)
+```
+
+```{r}
+devtools::session_info()
+```
+
