@@ -94,6 +94,9 @@ formula <- tab_model %>%
   str_c("o3_mass_conc ~ ", .) %>%
   as.formula()
 
+
+# Fit Gaussian ------------------------------------------------------------
+
 # Setting seeds for reproducibility
 set.seed(5893524) # My student ID
 seeds <- map(1:5, ~sample.int(1000, 2))
@@ -105,9 +108,6 @@ train_control <- trainControl(
   verboseIter = TRUE,
   seeds = seeds
 )
-
-
-# Fit Gaussian ------------------------------------------------------------
 
 model <- train(
   form = formula,
