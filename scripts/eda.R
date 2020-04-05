@@ -4,7 +4,7 @@ library(tidyverse)
 
 # Data --------------------------------------------------------------------
 
-tab_model <- write_csv("data/data_model.csv")
+tab_model <- read_rds("data/data_model.rds")
 
 
 # Number os NAs -----------------------------------------------------------
