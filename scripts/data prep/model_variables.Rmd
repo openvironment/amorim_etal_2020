@@ -1,0 +1,61 @@
+---
+title: "Model variables"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Observation: "X * Y" represents the interaction term betwwen the variables X and Y.
+
+## Dependent variable
+
+ozone concentration (`o3_mass_conc`): daily ozone concentration average, between 12 p.m. and 4 p.m.
+
+## Station
+
+Dummies variables for each monitoring station.
+
+## Calendar
+
+- month of the year (`month`): to control the different traffic setting (proportion of cars, trucks, buses) in scholar vacation months.
+
+> Usar mês do ano ou indicador de mês de férias? Existe alguma outra sazonalidade a ser controlada?
+
+- day of week (`daofweek`): to control  the different traffic setting (proportion of cars, trucks, buses) in each day of the week.
+
+- dummy for public holidays (`dv_publicholiday`): to control the different traffic setting (proportion of cars, trucks, buses) in holidays.
+
+- day of week * dummy for public holidays: to account for the different effect of holidays in each day of the week.
+
+## Climate
+
+All variables here are known to be associated with the ozone formation. All not dummies were measured between 12 p.m. and 4 p.m.
+
+- solar radiation (`rd`)
+
+- temperature (Celsius) (`tp`)
+
+- humidity (`hm`)
+
+- wind speed (`ws`)
+
+- precipitation (mm) (`pp`)
+
+- dummy for thermal inversion between 0 and 199 meters at 9 a.m. (`dv_ti_0to199m_9am`)
+
+- dummy for thermal inversion between 200 and 499 meters at 9 a.m. (`dv_ti_200to499m_9am`)
+
+## Traffic and fuel
+
+Thaffic variables control NOx and VOCs emissions, key elements of ozone formation. Both traffic variables were measured in between 7 p.m. and 11 p.m.
+
+- average traffic in the city(`congestion_city`).
+
+- average traffic in the region of the monitoring station (`congestion_region`).
+
+- estimated daily proportion of cars running on gasoline compared to those running on alcohol (`share_gas`).
+
+
+

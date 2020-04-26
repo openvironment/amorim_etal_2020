@@ -1,0 +1,197 @@
+---
+title: "Calendar variables"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(lubridate)
+
+theme_set(theme_minimal())
+default_color <- "royal blue"
+ozone_label <- expression(paste("Ozone (", mu, "g/", m^3, ")"))
+
+source("utils.R")
+
+tab_model <- read_rds("../../data/data_model.rds")
+```
+
+## Summary
+
+Ozone = daily ozone average, between 12 p.m. and 4 p.m.
+
+```{r}
+tab_model %>% 
+  group_by(stationname, year) %>% 
+  summarise(
+    `Number of obs` = sum(!is.na(o3_mass_conc)),
+    `Number of missing obs` = sum(is.na(o3_mass_conc)),
+    `% of missing obs` = scales::percent(
+      mean(is.na(o3_mass_conc)), accuracy = 0.1
+    )
+  ) %>% 
+  format_table()
+```
+
+
+## By year
+
+Annual ozone average. The dashed line equals the highest average.
+
+```{r}
+tab_model %>% 
+  group_by(year, stationname) %>% 
+  summarise(
+    o3_mass_conc = mean(o3_mass_conc, na.rm = TRUE)
+  ) %>% 
+  group_by(stationname) %>% 
+  mutate(o3_max = max(o3_mass_conc)) %>% 
+  ggplot(aes(x = year, y = o3_mass_conc)) +
+  geom_line() +
+  facet_wrap(vars(stationname), ncol = 3) +
+  geom_hline(aes(yintercept = o3_max), linetype = 2, color = default_color) +
+  labs(y = ozone_label, x = "Year")
+```
+
+Annual ozone average. Error bars built with +/- 2 std. deviation.
+
+```{r}
+tab_model %>% 
+  group_by(year, stationname) %>% 
+  summarise(
+    o3_avg = mean(o3_mass_conc, na.rm = TRUE),
+    o3_sd = sd(o3_mass_conc, na.rm = TRUE),
+    o3_inf = o3_avg - 2 * o3_sd,
+    o3_sup = o3_avg + 2 * o3_sd
+  ) %>%
+  ggplot(aes(x = year, y = o3_avg, color = stationname)) +
+  geom_point(show.legend = FALSE) +
+  geom_errorbar(
+    aes(ymin = o3_inf, ymax = o3_sup), 
+    width = 0.2,
+    show.legend = FALSE
+  ) +
+  facet_wrap(vars(stationname), ncol = 3) +
+  labs(y = ozone_label, x = "Year")
+```
+
+Annual ozone distribution.
+
+```{r}
+tab_model %>% 
+  mutate(year = as.character(year)) %>% 
+  ggplot(aes(x = year, y = o3_mass_conc)) +
+  geom_boxplot() +
+  facet_wrap(vars(stationname), ncol = 3) +
+  labs(y = ozone_label, x = "Year")
+```
+
+## By month, all years
+
+Monthly ozone average. The dashed line equals the highest average.
+
+```{r}
+tab_model %>% 
+  group_by(month, stationname) %>% 
+  summarise(
+    o3_mass_conc = mean(o3_mass_conc, na.rm = TRUE)
+  ) %>% 
+  group_by(stationname) %>% 
+  mutate(o3_max = max(o3_mass_conc)) %>% 
+  ggplot(aes(x = month, y = o3_mass_conc)) +
+  geom_line() +
+  facet_wrap(vars(stationname), ncol = 3) +
+  geom_hline(aes(yintercept = o3_max), linetype = 2, color = default_color) +
+  labs(y = ozone_label, x = "Month")
+```
+
+Monthly ozone distribution.
+
+```{r}
+tab_model %>% 
+  mutate(month = str_pad(month, 2, "left", "0")) %>% 
+  ggplot(aes(x = month, y = o3_mass_conc)) +
+  geom_boxplot() +
+  facet_wrap(vars(stationname), ncol = 2) +
+  labs(y = ozone_label, x = "Month")
+```
+
+## By week of the year, all years
+
+Ozone average by week of the year. The dashed line equals the highest average.
+
+```{r}
+tab_model %>% 
+  group_by(week, stationname) %>% 
+  summarise(
+    o3_mass_conc = mean(o3_mass_conc, na.rm = TRUE)
+  ) %>% 
+  group_by(stationname) %>% 
+  mutate(o3_max = max(o3_mass_conc)) %>% 
+  ggplot(aes(x = week, y = o3_mass_conc)) +
+  geom_line() +
+  facet_wrap(vars(stationname), ncol = 3) +
+  geom_hline(aes(yintercept = o3_max), linetype = 2, color = default_color) +
+  labs(y = ozone_label, x = "Week of the year")
+```
+
+## By day of week, all years
+
+Ozone average by day of the week, excluding public holidays.
+
+```{r, fig.height=10, fig.width=8}
+tab_model %>% 
+  filter(dv_weekday_regular == 1 | dayofweek %in% c(0, 6)) %>%
+  mutate(dayofweek = wday(dayofweek + 1, label = TRUE)) %>% 
+  group_by(dayofweek, stationname) %>% 
+  summarise(
+    o3_mass_conc = mean(o3_mass_conc, na.rm = TRUE)
+  ) %>% 
+  group_by(stationname) %>% 
+  mutate(o3_max = max(o3_mass_conc)) %>% 
+  ggplot(aes(x = dayofweek, y = o3_mass_conc)) +
+  geom_line(aes(group = 1)) +
+  geom_label(aes(label = round(o3_mass_conc))) +
+  facet_wrap(vars(stationname), ncol = 2) +
+  labs(y = ozone_label, x = "Day of week")
+```
+
+Public holidays vs regular days
+
+```{r}
+tab_model %>% 
+  group_by(dv_publicholiday) %>% 
+  summarise(
+    `Ozone average` = mean(o3_mass_conc, na.rm = TRUE),
+    `Number of obs` = sum(!is.na(o3_mass_conc)),
+    `Number of missing obs` = sum(is.na(o3_mass_conc)),
+    `Prop of missing obs` = scales::percent(
+      mean(!is.na(o3_mass_conc)), accuracy = 0.1
+    )
+  ) %>% 
+  mutate(dv_publicholiday = ifelse(dv_publicholiday == 0, "No", "Yes")) %>% 
+  rename(`Public holiday` = dv_publicholiday)
+```
+
+Ozone average by day of the week for regular days and public holidays.
+
+```{r}
+tab_model %>% 
+  mutate(
+    dayofweek = wday(dayofweek + 1, label = TRUE),
+    dv_publicholiday = ifelse(dv_publicholiday == 0, "No", "Yes")
+  ) %>% 
+  group_by(dayofweek, stationname, dv_publicholiday) %>% 
+  summarise(
+    o3_mass_conc = mean(o3_mass_conc, na.rm = TRUE)
+  ) %>% 
+  group_by(stationname) %>% 
+  mutate(o3_max = max(o3_mass_conc)) %>% 
+  ggplot(aes(x = dayofweek, y = o3_mass_conc, color = dv_publicholiday)) +
+  geom_line(aes(group = dv_publicholiday)) +
+  facet_wrap(vars(stationname), ncol = 2) +
+  labs(y = ozone_label, x = "Day of week", color = "Public holiday")
+```
+
