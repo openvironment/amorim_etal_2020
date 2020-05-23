@@ -9,15 +9,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Observation: "X * Y" represents the interaction term betwwen the variables X and Y.
 
-## Dependent variable
+### Dependent variable
 
 ozone concentration (`o3_mass_conc`): daily ozone concentration average, between 12 p.m. and 4 p.m.
 
-## Station
+### Station
 
 Dummies variables for each monitoring station.
 
-## Calendar
+### Calendar
 
 - month of the year (`month`): to control the different traffic setting (proportion of cars, trucks, buses) in scholar vacation months.
 
@@ -29,7 +29,7 @@ Dummies variables for each monitoring station.
 
 - day of week * dummy for public holidays: to account for the different effect of holidays in each day of the week.
 
-## Climate
+### Climate
 
 All variables here are known to be associated with the ozone formation. All not dummies were measured between 12 p.m. and 4 p.m.
 
@@ -47,7 +47,7 @@ All variables here are known to be associated with the ozone formation. All not 
 
 - dummy for thermal inversion between 200 and 499 meters at 9 a.m. (`dv_ti_200to499m_9am`)
 
-## Traffic and fuel
+### Traffic and fuel
 
 Thaffic variables control NOx and VOCs emissions, key elements of ozone formation. Both traffic variables were measured in between 7 p.m. and 11 p.m.
 
