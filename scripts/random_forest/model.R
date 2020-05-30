@@ -1,4 +1,5 @@
-# XGBoost
+# Random forest
+
 
 # Utils -------------------------------------------------------------------
 
@@ -32,24 +33,19 @@ rec <- tab_model %>%
   step_mutate(
     month = as.factor(month), 
     dayofweek = as.factor(dayofweek)
-  ) %>% 
-  step_dummy(month, dayofweek)
+  )
 
 # rec %>% prep(tab_model) %>% bake(tab_model)
 
 # Model -------------------------------------------------------------------
 
-model <- boost_tree(
-  mtry = tune(),
+model <- rand_forest(
   trees = tune(),
-  min_n = tune(),
-  tree_depth = tune(),
-  learn_rate = tune(),
-  loss_reduction = tune(),
-  sample_size = tune()
-) %>%
-  set_mode("regression") %>%
-  set_engine("xgboost", nthread = 2)
+  mtry = tune(),
+  min_n = tune()
+) %>% 
+  set_mode("regression") %>% 
+  set_engine("ranger", num.threads = 2)
 
 # Workflow ----------------------------------------------------------------
 
@@ -63,11 +59,10 @@ wf <- workflow() %>%
 hyperparams <- wf %>% 
   parameters() %>% 
   update(
-    mtry = mtry(c(3, 14)),
-    sample_size = sample_prop(c(0.5, 1))
+    mtry = mtry(c(3, 14))
   )
 
-grid <- grid_max_entropy(hyperparams, size = 100)
+grid <- grid_max_entropy(hyperparams, size = 50)
 
 # cv ----------------------------------------------------------------------
 
@@ -91,22 +86,18 @@ tab_metrics <- fit_cv %>%
 
 readr::write_rds(
   tab_metrics, 
-  "results/dom_pedro_ii/xgboost_metrics.rds"
+  "results/dom_pedro_ii/random_forest_metrics.rds"
 )
 
 # final model -------------------------------------------------------------
 
-final_model <- boost_tree(
+final_model <- rand_forest(
   trees = unique(tab_metrics$trees),
   mtry = unique(tab_metrics$mtry),
-  min_n = unique(tab_metrics$min_n),
-  tree_depth = unique(tab_metrics$tree_depth),
-  learn_rate = unique(tab_metrics$learn_rate),
-  loss_reduction = unique(tab_metrics$loss_reduction),
-  sample_size = unique(tab_metrics$sample_size)
+  min_n = unique(tab_metrics$min_n)
 ) %>% 
   set_mode("regression") %>% 
-  set_engine("xgboost", num.threads = 2)
+  set_engine("ranger", num.threads = 2)
 
 fit_model <- wf %>% 
   update_model(final_model) %>% 
@@ -114,7 +105,7 @@ fit_model <- wf %>%
 
 readr::write_rds(
   fit_model, 
-  "results/dom_pedro_ii/xgboost_fit.rds"
+  "results/dom_pedro_ii/random_forest_fit.rds"
 )
 
 # Interpretation ----------------------------------------------------------
