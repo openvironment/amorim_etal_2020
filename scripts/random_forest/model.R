@@ -91,6 +91,8 @@ readr::write_rds(
 
 # final model -------------------------------------------------------------
 
+tab_metrics <- readr::read_rds("results/dom_pedro_ii/random_forest_metrics.rds")
+
 final_model <- rand_forest(
   trees = unique(tab_metrics$trees),
   mtry = unique(tab_metrics$mtry),
@@ -103,14 +105,12 @@ fit_model <- wf %>%
   update_model(final_model) %>% 
   fit(tab_model)
 
-readr::write_rds(
-  fit_model, 
-  "results/dom_pedro_ii/random_forest_fit.rds"
-)
-
-# Interpretation ----------------------------------------------------------
+# Interpretation
 
 library(iml)
+# library(ranger)
+
+fit_model <- readr::read_rds("results/dom_pedro_ii/random_forest_fit.rds")
 
 predict_function <- function(model, newdata) {
   predict(model, new_data = newdata)$.pred
@@ -125,3 +125,8 @@ ale_plot(
   xlab = "share25"
 )
 
+ggsave(
+  "results/dom_pedro_ii/ale_plot_random_forest.png",
+  width = 16,
+  height = 10
+)
