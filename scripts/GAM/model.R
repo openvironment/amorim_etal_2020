@@ -6,113 +6,64 @@ library(tidyverse)
 library(mgcv)
 library(caret)
 library(recipes)
-library(patchwork)
 
+source("scripts/utils/utils_modelling.R")
 
 # Data --------------------------------------------------------------------
 
 tab_model <- read_rds("data/data_model.rds")
+
+tab_model <- tab_model %>% 
+  filter(
+    stationname == "Dom Pedro II"
+  ) %>% 
+  select(
+    -siteid, -stationname,
+    -date, -year, -week, -day, -dv_weekday_regular, -dv_yearendvacation,
+    -dv_beltway_open
+  ) %>% 
+  na.omit()
+
 tab_bs <- read_rds("data/data_gas_200_bs.rds")
-
-
-# Utils -------------------------------------------------------------------
-
-gam_plot <- function(fit, smooth, xlab, ylab) {
-  
-  x <- fit$model[,smooth$term]
-  
-  if (smooth$by == "NA") {
-    by.level = "NA"
-  } else {
-    by.level = smooth$by.level
-  }
-  
-  range = tibble(x = x, by = by.level)
-  names(range) = c(smooth$term, smooth$by)
-  
-  par <- smooth$first.para:smooth$last.para
-  mat <- PredictMat(smooth, range)
-  y <- (mat %*% fit$coefficients[par]) %>% as.numeric
-  
-  se <- ((mat %*% fit$Vp[par, par, drop = FALSE]) * mat) %>%
-    rowSums %>% 
-    sqrt
-  
-  df <- tibble(
-    label = smooth$label,
-    x.var = smooth$term,
-    x.val = x,
-    value = y,
-    se = se
-  )
-  
-  ggplot(df, aes(x.val, value)) +
-    geom_ribbon(aes(ymin = value - 2*se, ymax = value + 2*se), 
-                fill = "grey80") +
-    geom_line(color = 'blue', size = 1) +
-    #geom_point(aes(x = x.val, y = min(value-2*se)-sd(value))) +
-    labs(y = ylab, x = xlab) +
-    theme_bw()
-  
-}
-
-pred_obs_plot <- function(obs, pred) {
-  
-  tibble(x = obs, y = pred) %>% 
-    ggplot(aes(x = x, y = y)) +
-    geom_point() +
-    geom_abline(intercept = 0, slope = 1, color = "royal blue") +
-    labs(x = "Observed", y = "Predicted") +
-    theme_bw()
-  
-}
 
 # Data prep ---------------------------------------------------------------
 
-tab_model <- 
-  recipe(tab_model) %>% 
-  step_dummy(stationname) %>% 
-  step_interact(
-    terms = ~ matches("^stationname"):trend +
-      matches("^stationname"):dv_beltway_open
+rec <- tab_model %>% 
+  slice(1) %>% 
+  recipe(o3_mass_conc ~ .) %>% 
+  step_interact(terms = ~ dayofweek:dv_publicholiday) %>%
+  step_mutate(
+    month = as.factor(month), 
+    dayofweek = as.factor(dayofweek),
+    dayofweek_x_dv_publicholiday = as.factor(dayofweek_x_dv_publicholiday)
   ) %>% 
-  prep(training = tab_model) %>% 
-  bake(new_data = tab_model)
+  step_dummy(month, starts_with("dayofweek"))
 
-formula <- tab_model %>%
-  select(
-    -siteid,
-    -date, -o3_mass_conc, -dayofweek,
-    -starts_with("congestion"),
-    -dv_kmregion_am_18_max, -dv_kmcity_am_80_max,
-    -pp, -dv_pp_20_150,
-    -dv_sun_reg,
-    -year, -month, -day, -dv_weekday_regular, -dv_yearendvacation
-  ) %>%
-  names() %>%
-  str_c(collapse = " + ") %>%
-  str_c("o3_mass_conc ~ ", .) %>%
-  as.formula()
-
+# rec %>% prep(tab_model) %>% bake(tab_model)
 
 # Fit Gaussian ------------------------------------------------------------
 
+v <- 10
+
 # Setting seeds for reproducibility
 set.seed(5893524) # My student ID
-seeds <- map(1:5, ~sample.int(1000, 2))
-seeds[[6]] <- sample.int(1000, 1)
+seeds <- map(1:v, ~sample.int(1000, 2))
+seeds[[v + 1]] <- sample.int(1000, 1)
 
 train_control <- trainControl(
   method = "cv", 
-  number = 5,  
+  number = v,  
   verboseIter = TRUE,
   seeds = seeds
 )
 
+link = "identity"
+
 model <- train(
-  form = formula,
-  data = na.omit(tab_model),
+  x = rec,
+  data = tab_model,
   method = "gam",
+  family = gaussian(link = link),
   trControl = train_control
 )
 
@@ -120,69 +71,231 @@ model <- train(
 # summary(model$finalModel)  
 # varImp(model)
 
+# Metrics
+tab_metrics <- model$results %>% 
+  filter(select == model$bestTune$select) %>% 
+  extract_gam_metrics(v) %>% 
+  mutate(link_function = link)
+
+readr::write_rds(
+  tab_metrics, 
+  "results/dom_pedro_ii/gam_gaussian_metrics.rds"
+)
+
+# Estimates
+tab_estimates <- model$finalModel %>% 
+  summary() %>% 
+  extract_gam_estimates()
+
+readr::write_rds(
+  tab_estimates, 
+  "results/dom_pedro_ii/gam_gaussian_estimates.rds"
+)
+
 # Smooth term plot
 
-p <- gam_plot(
+p_gam <- gam_plot(
   model$finalModel, 
   model$finalModel$smooth[[1]],
   xlab = "ShareE25",
   ylab = "Effect on the ozone concentration"
 )
 
+ggsave(
+  "results/dom_pedro_ii/gam_gaussian_plot.png",
+  plot = p_gam,
+  width = 16,
+  height = 10
+)
+
 # Observed vs predicted plot
 
-p_gaussian <- pred_obs_plot(
+p_pred <- pred_obs_plot(
   obs = na.omit(tab_model)$o3_mass_conc,
   pred = predict(model, newdata = na.omit(tab_model))
 ) +
-  ggtitle("(a)")
+  ggtitle("Gaussian")
+
+ggsave(
+  "results/dom_pedro_ii/gam_gaussian_pred_plot.png",
+  plot = p_pred,
+  width = 16,
+  height = 10
+)
+
+
 
 
 # Fit Gamma ---------------------------------------------------------------
 
+tab_model_gamma <- tab_model %>% 
+  mutate(o3_mass_conc = o3_mass_conc + 0.01)
+
+v <- 10
+
+# Setting seeds for reproducibility
+set.seed(5893524) # My student ID
+seeds <- map(1:v, ~sample.int(1000, 2))
+seeds[[v + 1]] <- sample.int(1000, 1)
+
+train_control <- trainControl(
+  method = "cv", 
+  number = v,  
+  verboseIter = TRUE,
+  seeds = seeds
+)
+
+link = "log"
+
 model <- train(
-  form = formula, 
-  data = na.omit(tab_model), 
+  x = rec,
+  data = tab_model_gamma,
   method = "gam",
-  family = Gamma(link = log),
+  family = Gamma(link = link),
   trControl = train_control
 )
 
 # model
-# summary(model$finalModel)
+# summary(model$finalModel)  
+# varImp(model)
 
-# varImp(model$finalModel) %>%
-#   rownames_to_column() %>%
-#   arrange(desc(Overall))
+# Metrics
+tab_metrics <- model$results %>% 
+  filter(select == model$bestTune$select) %>% 
+  extract_gam_metrics(v) %>% 
+  mutate(link_function = link)
+
+readr::write_rds(
+  tab_metrics, 
+  "results/dom_pedro_ii/gam_gamma_metrics.rds"
+)
+
+# Estimates
+tab_estimates <- model$finalModel %>% 
+  summary() %>% 
+  extract_gam_estimates()
+
+readr::write_rds(
+  tab_estimates, 
+  "results/dom_pedro_ii/gam_gamma_estimates.rds"
+)
+
+# Smooth term plot
+
+p_gam <- gam_plot(
+  model$finalModel, 
+  model$finalModel$smooth[[1]],
+  xlab = "ShareE25",
+  ylab = "Effect on the ozone concentration"
+)
+
+ggsave(
+  "results/dom_pedro_ii/gam_gamma_plot.png",
+  plot = p_gam,
+  width = 16,
+  height = 10
+)
 
 # Observed vs predicted plot
 
-p_gamma <- pred_obs_plot(
+p_pred <- pred_obs_plot(
   obs = na.omit(tab_model)$o3_mass_conc,
   pred = predict(model, newdata = na.omit(tab_model))
 ) +
-  ggtitle("(b)")
+  ggtitle("Gamma")
+
+ggsave(
+  "results/dom_pedro_ii/gam_gamma_pred_plot.png",
+  plot = p_pred,
+  width = 16,
+  height = 10
+)
+
+
 
 
 # Inverse Gaussian fit ----------------------------------------------------
 
+tab_model_inv_gaussian <- tab_model %>% 
+  mutate(o3_mass_conc = o3_mass_conc + 0.01)
+
+v <- 10
+
+# Setting seeds for reproducibility
+set.seed(5893524) # My student ID
+seeds <- map(1:v, ~sample.int(1000, 2))
+seeds[[v + 1]] <- sample.int(1000, 1)
+
+train_control <- trainControl(
+  method = "cv", 
+  number = v,  
+  verboseIter = TRUE,
+  seeds = seeds
+)
+
+link <- "1/mu^2"
+
 model <- train(
-  form = formula, 
-  data = na.omit(df_model), 
+  x = rec,
+  data = tab_model_inv_gaussian,
   method = "gam",
-  family = inverse.gaussian(link = "1/mu^2"),
+  family = inverse.gaussian(link = link),
   trControl = train_control
 )
 
 # model
-# summary(model$finalModel) 
+# summary(model$finalModel)  
 # varImp(model)
+
+# Metrics
+tab_metrics <- model$results %>% 
+  filter(select == model$bestTune$select) %>% 
+  extract_gam_metrics(v) %>% 
+  mutate(link_function = link)
+
+readr::write_rds(
+  tab_metrics, 
+  "results/dom_pedro_ii/gam_inv_gaussian_metrics.rds"
+)
+
+# Estimates
+tab_estimates <- model$finalModel %>% 
+  summary() %>% 
+  extract_gam_estimates()
+
+readr::write_rds(
+  tab_estimates, 
+  "results/dom_pedro_ii/gam_inv_gaussian_estimates.rds"
+)
+
+# Smooth term plot
+
+p_gam <- gam_plot(
+  model$finalModel, 
+  model$finalModel$smooth[[1]],
+  xlab = "ShareE25",
+  ylab = "Effect on the ozone concentration"
+)
+
+ggsave(
+  "results/dom_pedro_ii/gam_inv_gaussian_plot.png",
+  plot = p_gam,
+  width = 16,
+  height = 10
+)
 
 # Observed vs predicted plot
 
-p_inv_gaussian <- pred_obs_plot(
+p_pred <- pred_obs_plot(
   obs = na.omit(tab_model)$o3_mass_conc,
   pred = predict(model, newdata = na.omit(tab_model))
 ) +
-  ggtitle("(c)")
+  ggtitle("Inverse Gaussian")
+
+ggsave(
+  "results/dom_pedro_ii/gam_inv_gaussian_pred_plot.png",
+  plot = p_pred,
+  width = 16,
+  height = 10
+)
 

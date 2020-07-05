@@ -8,12 +8,12 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(iml)
 
-source("utils.R")
+source("../utils/utils_eda.R")
 
 theme_set(theme_minimal())
 ```
 
-## Comparação das métricas
+# Comparação das métricas
 
 ```{r}
 results <- list.files(
@@ -33,28 +33,28 @@ tab_metrics <- map_dfr(
 )
 ```
 
-##### RMSE
+### RMSE
 
 ```{r}
 estimates_plot(tab_metrics, "rmse")
 ```
 
-##### MAE
+### MAE
 
 ```{r}
 estimates_plot(tab_metrics, "mae")
 ```
 
 
-##### R2
+### R2
 
 ```{r}
 estimates_plot(tab_metrics, "rsq", rev = FALSE)
 ```
 
-## Resultados dos modelos
+# Resultados dos modelos
 
-#### Regressão linear
+### Regressão linear
 
 Estimativas
 
@@ -63,46 +63,108 @@ read_rds("../../results/dom_pedro_ii/linear_regression_estimates.rds") %>%
   estimates_table()
 ```
 
-#### Polynimial regression
+### Polynimial regression
 
-##### Degree 2
+#### Degree 2
 
 ```{r}
 read_rds("../../results/dom_pedro_ii/poly_regression_degree2_estimates.rds") %>%
   estimates_table()
 ```
 
-##### Degree 3
+#### Degree 3
 
 ```{r}
 read_rds("../../results/dom_pedro_ii/poly_regression_degree3_estimates.rds") %>%
   estimates_table()
 ```
 
-#### GAM
-
-##### Gaussian
-
-##### Gamma
-
-##### Inverse gaussian
-
-#### Random forest
+### GAM
 
 ```{r}
-hp_table(metricas, "random_forest")
+link_gaussian <- tab_metrics %>% 
+  filter(model == "gam_gaussian") %>% 
+  pull(link_function) %>% 
+  unique
+
+link_gamma <- tab_metrics %>% 
+  filter(model == "gam_gamma") %>% 
+  pull(link_function) %>% 
+  unique
+
+link_inv_gaussian <- tab_metrics %>% 
+  filter(model == "gam_inv_gaussian") %>% 
+  pull(link_function) %>% 
+  unique
 ```
+
+#### Gaussian (link = `r link_gaussian`)
+
+##### Estimates
+
+```{r}
+read_rds("../../results/dom_pedro_ii/gam_gaussian_estimates.rds") %>%
+  estimates_table()
+```
+
+##### GAM plot
+
+```{r}
+knitr::include_graphics("../../results/dom_pedro_ii/gam_gaussian_plot.png")
+```
+
+#### Gamma (link = `r link_gamma`)
+
+##### Estimates
+
+```{r}
+read_rds("../../results/dom_pedro_ii/gam_gamma_estimates.rds") %>%
+  estimates_table()
+```
+
+##### GAM plot
+
+```{r}
+knitr::include_graphics("../../results/dom_pedro_ii/gam_gamma_plot.png")
+``` 
+ 
+ 
+#### Inverse gaussian (link = `r link_inv_gaussian`)
+
+```{r}
+read_rds("../../results/dom_pedro_ii/gam_inv_gaussian_estimates.rds") %>%
+  estimates_table()
+```
+
+##### GAM plot
+
+```{r}
+knitr::include_graphics("../../results/dom_pedro_ii/gam_inv_gaussian_plot.png")
+```
+
+### Random forest
+
+#### Hyperparameters
+
+```{r}
+hp_table(tab_metrics, "random_forest")
+```
+
+#### ALE share
 
 ```{r, fig.cap="ALE plot"}
 knitr::include_graphics("../../results/dom_pedro_ii/ale_plot_random_forest.png")
 ```
 
-#### XGBooost
+### XGBooost
+
+#### Hyperparameters
 
 ```{r}
-hp_table(metricas, "xgboost")
+hp_table(tab_metrics, "xgboost")
 ```
 
+#### ALE share
 
 ```{r, fig.cap="ALE plot"}
 knitr::include_graphics("../../results/dom_pedro_ii/ale_plot_xgboost.png")

@@ -7,8 +7,8 @@ format_table <- function(tab, cap = NULL) {
 
 estimates_table <- function(tab) {
   tab %>% 
-    mutate_if(is.numeric, ~round(., 2)) %>% 
-    arrange(desc(abs(statistic))) %>% 
+    arrange(p.value) %>% 
+    mutate_if(is.numeric, ~round(., 2)) %>%
     format_table()
 }
 
@@ -40,5 +40,3 @@ estimates_plot <- function(tab, metric, rev = TRUE) {
     ) +
     labs(x = metric)
 }
-
-
