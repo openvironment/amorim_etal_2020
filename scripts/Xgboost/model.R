@@ -40,13 +40,13 @@ rec <- tab_model %>%
 # Model -------------------------------------------------------------------
 
 model <- boost_tree(
-  mtry = tune(),
-  trees = tune(),
-  min_n = tune(),
-  tree_depth = tune(),
-  learn_rate = tune(),
-  loss_reduction = tune(),
-  sample_size = tune()
+  mtry = 5,
+  trees = 2000,
+  min_n = 16,
+  tree_depth = 4,
+  learn_rate = 0.01,
+  loss_reduction = 0.01,
+  sample_size = 0.95
 ) %>%
   set_mode("regression") %>%
   set_engine("xgboost", nthread = 2)
@@ -61,18 +61,16 @@ wf <- workflow() %>%
 # Hyperparameters ---------------------------------------------------------
 
 hyperparams <- wf %>% 
-  parameters() %>% 
-  update(
-    mtry = mtry(c(3, 14)),
-    sample_size = sample_prop(c(0.5, 1))
-  )
+  parameters() 
 
-grid <- grid_max_entropy(hyperparams, size = 100)
+grid <- grid_max_entropy(hyperparams, size = 50)
+# grid <- expand.grid(mtry = c(5,  7, 10, 15))
 
 # cv ----------------------------------------------------------------------
 
+# Tunning 
 set.seed(5893524)
-tab_cv <- rsample::vfold_cv(tab_model, v = 10)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
 
 fit_cv <- tune_grid(
   wf,
@@ -81,6 +79,23 @@ fit_cv <- tune_grid(
   control = control_grid(verbose = TRUE),
   grid = grid
 )
+
+fit_cv %>%
+  collect_metrics() %>% 
+  filter(.metric == "rmse") %>% 
+  arrange(mean)
+
+# Metrics 
+set.seed(5893524)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
+
+fit_cv <- tune::fit_resamples(
+  resamples = tab_cv,
+  metrics = yardstick::metric_set(rmse, mae, rsq),
+  control = control_grid(verbose = TRUE)
+)
+
+###
 
 tab_metrics <- fit_cv %>%
   collect_metrics() %>% 
