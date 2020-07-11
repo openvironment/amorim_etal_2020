@@ -66,7 +66,7 @@ wf_poly3 <- workflow() %>%
 
 # Degree 2
 set.seed(5893524)
-tab_cv <- rsample::vfold_cv(tab_model, v = 10)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
 
 fit_cv_poly2 <- fit_resamples(
   wf_poly2,
@@ -85,7 +85,7 @@ readr::write_rds(
 
 # Degree 3
 set.seed(5893524)
-tab_cv <- rsample::vfold_cv(tab_model, v = 10)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
 
 fit_cv_poly3 <- fit_resamples(
   wf_poly3,

@@ -34,14 +34,14 @@ rec <- tab_model %>%
     dayofweek = as.factor(dayofweek),
     dayofweek_x_dv_publicholiday = as.factor(dayofweek_x_dv_publicholiday)
   ) %>% 
-  step_dummy(month, dayofweek)
+  step_dummy(month, dayofweek, dayofweek_x_dv_publicholiday)
 
 # rec %>% prep(tab_model) %>% bake(tab_model)
 
 # Model -------------------------------------------------------------------
 
 model <- boost_tree(
-  mtry = 15,
+  mtry = 14,
   trees = 2000,
   min_n = 16,
   tree_depth = 4,

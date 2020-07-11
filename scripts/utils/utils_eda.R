@@ -23,6 +23,15 @@ hp_table <- function(tab, model_name) {
 }
 
 estimates_plot <- function(tab, metric, rev = TRUE) {
+  
+  lm_limits <- tab %>% 
+    filter(model == "linear_regression", .metric == metric) %>% 
+    mutate(
+      li = mean - 2 * std_err,
+      ls = mean + 2 * std_err
+    ) %>% 
+    select(li, ls)
+  
   tab %>% 
     filter(.metric == metric) %>% 
     mutate(
@@ -31,6 +40,8 @@ estimates_plot <- function(tab, metric, rev = TRUE) {
       model = forcats::fct_reorder(model, mean, .desc = rev)
     ) %>% 
     ggplot(aes(x = mean, y = model, color = model)) +
+    geom_vline(xintercept = lm_limits$li, linetype = 2, size = 0.2) +
+    geom_vline(xintercept = lm_limits$ls, linetype = 2, size = 0.2) +
     geom_point(size = 2, show.legend = FALSE) +
     geom_errorbar(
       aes(xmin = li, xmax = ls), 

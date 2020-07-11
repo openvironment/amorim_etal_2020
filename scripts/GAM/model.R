@@ -24,7 +24,7 @@ tab_model <- tab_model %>%
   ) %>% 
   na.omit()
 
-tab_bs <- read_rds("data/data_gas_200_bs.rds")
+# tab_bs <- read_rds("data/data_gas_200_bs.rds")
 
 # Data prep ---------------------------------------------------------------
 
@@ -44,15 +44,17 @@ rec <- tab_model %>%
 # Fit Gaussian ------------------------------------------------------------
 
 v <- 10
+r <- 5
 
 # Setting seeds for reproducibility
 set.seed(5893524) # My student ID
-seeds <- map(1:v, ~sample.int(1000, 2))
-seeds[[v + 1]] <- sample.int(1000, 1)
+seeds <- map(1:(v * r), ~sample.int(1000, 2))
+seeds[[v * r + 1]] <- sample.int(1000, 1)
 
 train_control <- trainControl(
-  method = "cv", 
-  number = v,  
+  method = "repeatedcv", 
+  number = v, 
+  repeats = r,
   verboseIter = TRUE,
   seeds = seeds
 )
@@ -74,7 +76,7 @@ model <- train(
 # Metrics
 tab_metrics <- model$results %>% 
   filter(select == model$bestTune$select) %>% 
-  extract_gam_metrics(v) %>% 
+  extract_gam_metrics(v * r) %>% 
   mutate(link_function = link)
 
 readr::write_rds(
@@ -132,26 +134,26 @@ tab_model_gamma <- tab_model %>%
   mutate(o3_mass_conc = o3_mass_conc + 0.01)
 
 v <- 10
+r <- 5
 
 # Setting seeds for reproducibility
 set.seed(5893524) # My student ID
-seeds <- map(1:v, ~sample.int(1000, 2))
-seeds[[v + 1]] <- sample.int(1000, 1)
+seeds <- map(1:(v * r), ~sample.int(1000, 2))
+seeds[[v * r + 1]] <- sample.int(1000, 1)
 
 train_control <- trainControl(
-  method = "cv", 
-  number = v,  
+  method = "repeatedcv", 
+  number = v, 
+  repeats = r,
   verboseIter = TRUE,
   seeds = seeds
 )
-
-link = "log"
 
 model <- train(
   x = rec,
   data = tab_model_gamma,
   method = "gam",
-  family = Gamma(link = link),
+  family = Gamma(link = "log"),
   trControl = train_control
 )
 
@@ -162,8 +164,8 @@ model <- train(
 # Metrics
 tab_metrics <- model$results %>% 
   filter(select == model$bestTune$select) %>% 
-  extract_gam_metrics(v) %>% 
-  mutate(link_function = link)
+  extract_gam_metrics(v*r) %>% 
+  mutate(link_function = "log")
 
 readr::write_rds(
   tab_metrics, 
@@ -220,15 +222,17 @@ tab_model_inv_gaussian <- tab_model %>%
   mutate(o3_mass_conc = o3_mass_conc + 0.01)
 
 v <- 10
+r <- 5
 
 # Setting seeds for reproducibility
 set.seed(5893524) # My student ID
-seeds <- map(1:v, ~sample.int(1000, 2))
-seeds[[v + 1]] <- sample.int(1000, 1)
+seeds <- map(1:(v * r), ~sample.int(1000, 2))
+seeds[[v * r + 1]] <- sample.int(1000, 1)
 
 train_control <- trainControl(
-  method = "cv", 
-  number = v,  
+  method = "repeatedcv", 
+  number = v, 
+  repeats = r,
   verboseIter = TRUE,
   seeds = seeds
 )
@@ -239,7 +243,7 @@ model <- train(
   x = rec,
   data = tab_model_inv_gaussian,
   method = "gam",
-  family = inverse.gaussian(link = link),
+  family = inverse.gaussian(link = "1/mu^2"),
   trControl = train_control
 )
 
@@ -250,7 +254,7 @@ model <- train(
 # Metrics
 tab_metrics <- model$results %>% 
   filter(select == model$bestTune$select) %>% 
-  extract_gam_metrics(v) %>% 
+  extract_gam_metrics(v*r) %>% 
   mutate(link_function = link)
 
 readr::write_rds(

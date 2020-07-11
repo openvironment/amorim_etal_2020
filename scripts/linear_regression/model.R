@@ -49,7 +49,7 @@ wf <- workflow() %>%
 # cv ----------------------------------------------------------------------
 
 set.seed(5893524)
-tab_cv <- rsample::vfold_cv(tab_model, v = 10)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
 
 fit_cv <- fit_resamples(
   wf,

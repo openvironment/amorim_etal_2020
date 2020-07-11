@@ -40,12 +40,12 @@ rec <- tab_model %>%
 # Model -------------------------------------------------------------------
 
 model <- rand_forest(
-  trees = tune(),
-  mtry = 15,
-  min_n = tune()
+  trees = 1500,
+  mtry = 5,
+  min_n = 4
 ) %>% 
   set_mode("regression") %>% 
-  set_engine("ranger", num.threads = 2)
+  set_engine("ranger", num.threads = 8)
 
 # Workflow ----------------------------------------------------------------
 
@@ -57,9 +57,12 @@ wf <- workflow() %>%
 # Hyperparameters ---------------------------------------------------------
 
 hyperparams <- wf %>% 
-  parameters() 
+  parameters() %>% 
+  update(
+    mtry = mtry(c(3, 14))
+  )
 
-grid <- grid_max_entropy(hyperparams, size = 50)
+grid <- grid_max_entropy(hyperparams, size = 80)
 
 # cv ----------------------------------------------------------------------
 
@@ -114,26 +117,13 @@ readr::write_rds(
 
 # final model -------------------------------------------------------------
 
-tab_metrics <- readr::read_rds("results/dom_pedro_ii/random_forest_metrics.rds")
-
-final_model <- rand_forest(
-  trees = unique(tab_metrics$trees),
-  mtry = unique(tab_metrics$mtry),
-  min_n = unique(tab_metrics$min_n)
-) %>% 
-  set_mode("regression") %>% 
-  set_engine("ranger", num.threads = 2)
-
 fit_model <- wf %>% 
-  update_model(final_model) %>% 
   fit(tab_model)
 
 # Interpretation
 
 library(iml)
 # library(ranger)
-
-fit_model <- readr::read_rds("results/dom_pedro_ii/random_forest_fit.rds")
 
 predict_function <- function(model, newdata) {
   predict(model, new_data = newdata)$.pred
