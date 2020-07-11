@@ -4,7 +4,7 @@
 
 library(tidymodels)
 
-source("scripts/utils/utils_plots.R")
+source("scripts/utils/utils_modelling.R")
 
 theme_set(theme_minimal())
 
@@ -40,7 +40,7 @@ rec <- tab_model %>%
 # Model -------------------------------------------------------------------
 
 model <- boost_tree(
-  mtry = 5,
+  mtry = 15,
   trees = 2000,
   min_n = 16,
   tree_depth = 4,
@@ -85,55 +85,47 @@ fit_cv %>%
   filter(.metric == "rmse") %>% 
   arrange(mean)
 
-# Metrics 
-set.seed(5893524)
-tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
-
-fit_cv <- tune::fit_resamples(
-  resamples = tab_cv,
-  metrics = yardstick::metric_set(rmse, mae, rsq),
-  control = control_grid(verbose = TRUE)
-)
-
-###
-
 tab_metrics <- fit_cv %>%
-  collect_metrics() %>% 
-  semi_join(
-    show_best(fit_cv, metric = "rmse", n = 1),
-    by = c("mtry", "trees", "min_n")
-  )
+  collect_metrics() 
 
 readr::write_rds(
   tab_metrics, 
   "results/dom_pedro_ii/xgboost_metrics.rds"
 )
 
+# Metrics 
+set.seed(5893524)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
+
+fit_cv <- tune::fit_resamples(
+  wf,
+  resamples = tab_cv,
+  metrics = yardstick::metric_set(rmse, mae, rsq),
+  control = control_grid(verbose = TRUE)
+)
+
+fit_cv %>%
+  collect_metrics() %>% 
+  filter(.metric == "rmse") %>% 
+  arrange(mean)
+
+tab_metrics <- fit_cv %>%
+  collect_metrics() 
+
+readr::write_rds(
+  tab_metrics, 
+  "results/dom_pedro_ii/xgboost_metrics.rds"
+)
+
+
 # final model -------------------------------------------------------------
 
-tab_metrics <- readr::read_rds("results/dom_pedro_ii/xgboost_metrics.rds")
-
-final_model <- boost_tree(
-  trees = unique(tab_metrics$trees),
-  mtry = unique(tab_metrics$mtry),
-  min_n = unique(tab_metrics$min_n),
-  tree_depth = unique(tab_metrics$tree_depth),
-  learn_rate = unique(tab_metrics$learn_rate),
-  loss_reduction = unique(tab_metrics$loss_reduction),
-  sample_size = unique(tab_metrics$sample_size)
-) %>% 
-  set_mode("regression") %>% 
-  set_engine("xgboost", num.threads = 2)
-
 fit_model <- wf %>% 
-  update_model(final_model) %>% 
   fit(tab_model)
 
 # Interpretation
 
 library(iml)
-
-fit_model <- readr::read_rds("results/dom_pedro_ii/xgboost_fit.rds")
 
 predict_function <- function(model, newdata) {
   predict(model, new_data = newdata)$.pred

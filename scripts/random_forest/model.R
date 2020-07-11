@@ -1,11 +1,10 @@
 # Random forest
 
-
 # Utils -------------------------------------------------------------------
 
 library(tidymodels)
 
-source("scripts/utils/utils_plots.R")
+source("scripts/utils/utils_modelling.R")
 
 theme_set(theme_minimal())
 
@@ -41,7 +40,7 @@ rec <- tab_model %>%
 
 model <- rand_forest(
   trees = tune(),
-  mtry = tune(),
+  mtry = 15,
   min_n = tune()
 ) %>% 
   set_mode("regression") %>% 
@@ -57,17 +56,15 @@ wf <- workflow() %>%
 # Hyperparameters ---------------------------------------------------------
 
 hyperparams <- wf %>% 
-  parameters() %>% 
-  update(
-    mtry = mtry(c(3, 14))
-  )
+  parameters() 
 
 grid <- grid_max_entropy(hyperparams, size = 50)
 
 # cv ----------------------------------------------------------------------
 
+# Tunning 
 set.seed(5893524)
-tab_cv <- rsample::vfold_cv(tab_model, v = 10)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
 
 fit_cv <- tune_grid(
   wf,
@@ -77,12 +74,37 @@ fit_cv <- tune_grid(
   grid = grid
 )
 
-tab_metrics <- fit_cv %>%
+fit_cv %>%
   collect_metrics() %>% 
-  semi_join(
-    show_best(fit_cv, metric = "rmse", n = 1),
-    by = c("mtry", "trees", "min_n")
-  )
+  filter(.metric == "rmse") %>% 
+  arrange(mean)
+
+tab_metrics <- fit_cv %>%
+  collect_metrics() 
+
+readr::write_rds(
+  tab_metrics, 
+  "results/dom_pedro_ii/random_forest_metrics.rds"
+)
+
+# Metrics 
+set.seed(5893524)
+tab_cv <- rsample::vfold_cv(tab_model, v = 10, repeats = 5)
+
+fit_cv <- tune::fit_resamples(
+  wf,
+  resamples = tab_cv,
+  metrics = yardstick::metric_set(rmse, mae, rsq),
+  control = control_grid(verbose = TRUE)
+)
+
+fit_cv %>%
+  collect_metrics() %>% 
+  filter(.metric == "rmse") %>% 
+  arrange(mean)
+
+tab_metrics <- fit_cv %>%
+  collect_metrics() 
 
 readr::write_rds(
   tab_metrics, 
