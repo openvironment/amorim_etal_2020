@@ -147,7 +147,7 @@ knitr::include_graphics("../../results/dom_pedro_ii/gam_inv_gaussian_plot.png")
 #### Hyperparameters
 
 ```{r}
-hp_table(tab_metrics, "random_forest")
+# hp_table(tab_metrics, "random_forest")
 ```
 
 #### ALE share
@@ -161,7 +161,7 @@ knitr::include_graphics("../../results/dom_pedro_ii/ale_plot_random_forest.png")
 #### Hyperparameters
 
 ```{r}
-hp_table(tab_metrics, "xgboost")
+# hp_table(tab_metrics, "xgboost")
 ```
 
 #### ALE share
