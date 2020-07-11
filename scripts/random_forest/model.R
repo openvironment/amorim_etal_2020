@@ -31,10 +31,11 @@ rec <- tab_model %>%
   step_interact(terms = ~ dayofweek:dv_publicholiday) %>%
   step_mutate(
     month = as.factor(month), 
-    dayofweek = as.factor(dayofweek)
+    dayofweek = as.factor(dayofweek),
+    dayofweek_x_dv_publicholiday = as.factor(dayofweek_x_dv_publicholiday)
   )
 
-# rec %>% prep(tab_model) %>% bake(tab_model)
+# rec %>% prep(tab_model) %>% bake(tab_model) %>% View()
 
 # Model -------------------------------------------------------------------
 
